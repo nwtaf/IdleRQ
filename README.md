@@ -1,6 +1,8 @@
 # IdleRQ
 Idle RQ protocol implementation using Sockets Library to send a JPG image from a primary host to secondary host.
 
+Developed with MW and KF for Network Communications 471
+
 
 
 Primary (client): 
