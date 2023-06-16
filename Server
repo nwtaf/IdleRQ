@@ -1,0 +1,62 @@
+# Server, test image was 10KB
+import socket
+import os
+import struct
+import time
+
+image_save_path = r'C:\...\testimage.jpg'
+UDP_IP = "127.0.0.1"
+UDP_PORT = 50
+IN_PORT = 80
+ack_delay = 0  # set to 0 for acks that work, set to 60+ for no ack
+Received_Packets = [b'0x00', b'0x00', b'0x00', b'0x00', b'0x00', b'0x00', b'0x00', b'0x00', b'0x00', b'0x00']  # Packets go here
+
+
+# Create UDP Socket Object with address family(AF_INET) = IPv4 and datagram-oriented socket type(SOCK_DGRAM) = UDP
+def create_socket():
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    return sock
+
+
+# block wait for packets, and assemble them into File_Assembled
+def receive_packets(sock):
+    global Received_Packets
+    sequence_number = 0
+    sock.bind((UDP_IP, IN_PORT))  # associate socket w/ server
+    print("Waiting for the packet...")
+    while sequence_number != 9:
+        temp = sock.recvfrom(1024)[0]  # recvfrom is blocking and buffer size is 1024 bytes.
+        sequence_number = struct.unpack('i', temp[-4:])[0]  # Convert packet number bytes to integer
+        time.sleep(ack_delay)  # wait 1 second before sending ack - this should force a timeout error
+        sock.sendto(temp[-4:], (UDP_IP, UDP_PORT))  # send sequence_number ack
+        print("ACK ", sequence_number, " Sent")
+        Received_Packets[sequence_number] = temp[:-4]  # Store received packet without the packet number bytes
+    print("All packets ACK'd and received.")
+    File_Assembled = Received_Packets[0] + Received_Packets[1] + Received_Packets[2] + Received_Packets[3] + \
+                     Received_Packets[4] + Received_Packets[5] + Received_Packets[6] + Received_Packets[7] + \
+                     Received_Packets[8] + Received_Packets[9]  # Put all the packets together.
+    return File_Assembled
+
+
+# writes File_Assembled to a file and closes the file
+def store_image(File_Assembled, image_save_path):
+    f = open(image_save_path, 'wb')  # r' = raw string path, wb = write binary
+    f.write(File_Assembled)
+    print("Data has been written.")
+    f.close()
+    print("Finished! Check folder for the image.")
+
+# to delete image two for debugging purposes
+#def delete_image():
+  #  os.remove(image_save_path)
+  #  print("Deleted stored image.")
+
+def main():
+    print("This is the server A grade")
+    sock = create_socket()
+    File_Assembled = receive_packets(sock)
+    store_image(File_Assembled, image_save_path)
+    #  delete_image()
+    print("Server End.")
+
+main()
