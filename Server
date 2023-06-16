@@ -52,7 +52,7 @@ def store_image(File_Assembled, image_save_path):
   #  print("Deleted stored image.")
 
 def main():
-    print("This is the server A grade")
+    print("This is Server")
     sock = create_socket()
     File_Assembled = receive_packets(sock)
     store_image(File_Assembled, image_save_path)
