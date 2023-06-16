@@ -1,0 +1,68 @@
+# Client, test image was 10KB
+import socket
+import time
+import struct
+
+image_send_path = r'C:\...\testimage.jpg'
+UDP_IP = "127.0.0.1"
+UDP_PORT = 80
+IN_PORT = 50
+buf = 1024
+file_name = open(image_send_path, "rb")
+Received_ACKs = [b'0x00', b'0x00', b'0x00', b'0x00', b'0x00', b'0x00', b'0x00', b'0x00', b'0x00', b'0x00']
+packet_arr = [b'0x00', b'0x00', b'0x00', b'0x00', b'0x00', b'0x00', b'0x00', b'0x00', b'0x00', b'0x00']
+
+
+def create_socket():
+    # Create UDP Socket Object with address family(AF_INET) = IPv4 and datagram-oriented socket type(SOCK_DGRAM) = UDP
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    return sock
+
+
+def send_packets(sock):
+    print("Sending...")
+    global Received_ACKs
+    Packet_Send_Number = 0
+    consecutive_timeouts = 0
+    sock.bind((UDP_IP, IN_PORT))
+    sock.settimeout(.00000001)  # set timeout in seconds
+
+    # put packets in array with sequence number concatenated to end
+    for i in range(len(packet_arr)):
+        packet_arr[i] = file_name.read(1020) + struct.pack('i', i)  # concatenates an int (4 bytes)
+
+    while Packet_Send_Number <= 9:
+        sock.sendto(packet_arr[Packet_Send_Number], (UDP_IP, UDP_PORT))
+        print("Packet ", Packet_Send_Number, " Sent")
+        print("Waiting for an ACK...")
+
+        try:
+            ack_dump = sock.recvfrom(1024)[0]  # blocking method from socks library
+            ack_number = struct.unpack('i', ack_dump[:4])[0]
+            print("ACK Received #", ack_number)
+
+            if Packet_Send_Number == ack_number:
+                consecutive_timeouts = 0
+                Packet_Send_Number = Packet_Send_Number + 1
+            else:
+                print("Received incorrect ACK. Waiting for retransmission...")
+        except socket.timeout:
+            print("Timeout Error: No ACK received.")  # resend previous packet?
+            # resend previous packet (do not increment sequence number)
+            consecutive_timeouts += 1
+            if consecutive_timeouts == 40:
+                consecutive_timeouts = 0
+
+            if consecutive_timeouts >= 50:
+                print("Reached maximum number of consecutive timeouts. Aborting...")
+                break
+    print("All packets sent")
+
+def main():
+    sock = create_socket()
+    send_packets(sock)
+    sock.close()
+    file_name.close()
+    print("Client End.")
+
+main()
